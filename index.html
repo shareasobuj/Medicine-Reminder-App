@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicine Reminder App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+
+        input {
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            background: #fafafa;
+        }
+
+        button.add-btn {
+            padding: 14px;
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+        }
+
+        .list-section ul {
+            list-style: none;
+        }
+
+        li {
+            background: #fff;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid #2ecc71;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .med-info strong {
+            display: block;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .delete-btn {
+            background: #ff7675;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* সাউন্ড টেস্ট বাটন */
+        .test-audio {
+            display: block;
+            margin: 10px auto;
+            background: none;
+            border: none;
+            color: #3498db;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>ঔষধ রিমাইন্ডার</h1>
+        
+        <div class="input-section">
+            <input type="text" id="medName" placeholder="ঔষধের নাম লিখুন...">
+            <input type="time" id="medTime">
+            <button class="add-btn" onclick="addReminder()">যোগ করুন</button>
+            <button class="test-audio" onclick="testSound()">সাউন্ড চেক করুন 🔊</button>
+        </div>
+
+        <div class="list-section">
+            <ul id="reminderList"></ul>
+        </div>
+    </div>
+
+    <audio id="alarmSound" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto" loop></audio>
+
+    <script>
+        let reminders = JSON.parse(localStorage.getItem('medicineReminders')) || [];
+
+        window.onload = () => {
+            displayReminders();
+            setInterval(checkTime, 1000);
+        };
+
+        function addReminder() {
+            const name = document.getElementById('medName').value;
+            const time = document.getElementById('medTime').value;
+
+            if (!name || !time) {
+                alert("দয়া করে সব তথ্য দিন!");
+                return;
+            }
+
+            reminders.push({ id: Date.now(), name, time, status: 'pending' });
+            localStorage.setItem('medicineReminders', JSON.stringify(reminders));
+            
+            document.getElementById('medName').value = '';
+            displayReminders();
+        }
+
+        function displayReminders() {
+            const list = document.getElementById('reminderList');
+            list.innerHTML = '';
+            reminders.sort((a, b) => a.time.localeCompare(b.time));
+            reminders.forEach(item => {
+                list.innerHTML += `
+                    <li>
+                        <div class="med-info">
+                            <strong>${item.name}</strong>
+                            <small>সময়: ${item.time}</small>
+                        </div>
+                        <button class="delete-btn" onclick="deleteReminder(${item.id})">মুছুন</button>
+                    </li>
+                `;
+            });
+        }
+
+        function deleteReminder(id) {
+            reminders = reminders.filter(item => item.id !== id);
+            localStorage.setItem('medicineReminders', JSON.stringify(reminders));
+            displayReminders();
+        }
+
+        function checkTime() {
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ":" + 
+                                now.getMinutes().toString().padStart(2, '0');
+
+            reminders.forEach(item => {
+                if (item.time === currentTime && item.status === 'pending') {
+                    triggerAlarm(item);
+                } else if (item.time !== currentTime) {
+                    item.status = 'pending'; 
+                }
+            });
+        }
+
+        function triggerAlarm(item) {
+            item.status = 'notified';
+            const alarm = document.getElementById('alarmSound');
+            
+            // সাউন্ড প্লে করা
+            alarm.play().catch(() => {
+                console.log("সাউন্ড ব্লকিং রিমুভ করতে স্ক্রিনে ক্লিক করুন");
+            });
+
+            // অ্যালার্ট মেসেজ
+            if (confirm(`🔔 ঔষধের সময় হয়েছে: ${item.name}\nসাউন্ড বন্ধ করতে 'OK' চাপুন।`)) {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }
+        }
+
+        function testSound() {
+            const alarm = document.getElementById('alarmSound');
+            alarm.play();
+            setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 3000);
+            alert("সাউন্ড ঠিক আছে! এখন থেকে অ্যালার্ম কাজ করবে।");
+        }
+
+        function deleteReminder(id) {
+            const alarm = document.getElementById('alarmSound');
+            alarm.pause();
+            reminders = reminders.filter(item => item.id !== id);
+            localStorage.setItem('medicineReminders', JSON.stringify(reminders));
+            displayReminders();
+        }
+    </script>
+</body>
+</html>
