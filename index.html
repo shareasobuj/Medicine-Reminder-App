@@ -128,24 +128,30 @@
 
     <script>
         let reminders = JSON.parse(localStorage.getItem('medicineReminders')) || [];
+        const alarm = document.getElementById('alarmSound');
 
         window.onload = () => {
             displayReminders();
             setInterval(checkTime, 1000);
         };
 
+        // সাউন্ড একটিভ করার জন্য একটি ট্রিক
+        document.body.addEventListener('click', function() {
+            alarm.play().then(() => {
+                alarm.pause();
+                alarm.currentTime = 0;
+            }).catch(e => console.log("Init audio"));
+        }, { once: true });
+
         function addReminder() {
             const name = document.getElementById('medName').value;
             const time = document.getElementById('medTime').value;
-
             if (!name || !time) {
                 alert("দয়া করে সব তথ্য দিন!");
                 return;
             }
-
             reminders.push({ id: Date.now(), name, time, status: 'pending' });
             localStorage.setItem('medicineReminders', JSON.stringify(reminders));
-            
             document.getElementById('medName').value = '';
             displayReminders();
         }
@@ -168,6 +174,7 @@
         }
 
         function deleteReminder(id) {
+            alarm.pause();
             reminders = reminders.filter(item => item.id !== id);
             localStorage.setItem('medicineReminders', JSON.stringify(reminders));
             displayReminders();
@@ -180,42 +187,31 @@
 
             reminders.forEach(item => {
                 if (item.time === currentTime && item.status === 'pending') {
-                    triggerAlarm(item);
+                    item.status = 'notified';
+                    triggerAlarm(item.name);
                 } else if (item.time !== currentTime) {
                     item.status = 'pending'; 
                 }
             });
         }
 
-        function triggerAlarm(item) {
-            item.status = 'notified';
-            const alarm = document.getElementById('alarmSound');
+        function triggerAlarm(name) {
+            // অ্যালার্ট দেখানোর আগেই সাউন্ড শুরু করা
+            alarm.play();
             
-            // সাউন্ড প্লে করা
-            alarm.play().catch(() => {
-                console.log("সাউন্ড ব্লকিং রিমুভ করতে স্ক্রিনে ক্লিক করুন");
-            });
-
-            // অ্যালার্ট মেসেজ
-            if (confirm(`🔔 ঔষধের সময় হয়েছে: ${item.name}\nসাউন্ড বন্ধ করতে 'OK' চাপুন।`)) {
-                alarm.pause();
-                alarm.currentTime = 0;
-            }
+            // সামান্য সময় পরে অ্যালার্ট দেখানো যাতে সাউন্ড লোড হতে পারে
+            setTimeout(() => {
+                if (confirm(`🔔 ঔষধের সময় হয়েছে: ${name}\nসাউন্ড বন্ধ করতে 'OK' চাপুন।`)) {
+                    alarm.pause();
+                    alarm.currentTime = 0;
+                }
+            }, 100);
         }
 
         function testSound() {
-            const alarm = document.getElementById('alarmSound');
             alarm.play();
             setTimeout(() => { alarm.pause(); alarm.currentTime = 0; }, 3000);
-            alert("সাউন্ড ঠিক আছে! এখন থেকে অ্যালার্ম কাজ করবে।");
-        }
-
-        function deleteReminder(id) {
-            const alarm = document.getElementById('alarmSound');
-            alarm.pause();
-            reminders = reminders.filter(item => item.id !== id);
-            localStorage.setItem('medicineReminders', JSON.stringify(reminders));
-            displayReminders();
+            alert("সাউন্ড টেস্ট সম্পন্ন!");
         }
     </script>
 </body>
